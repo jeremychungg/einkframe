@@ -1,5 +1,43 @@
 import os
-from PIL import Image, ImageEnhance, ImageOps
+from PIL import Image, ImageEnhance, ImageFilter, ImageOps
+
+
+TARGET_WIDTH = 800
+TARGET_HEIGHT = 480
+
+CONTRAST = 1.7
+COLOR = 1.2
+SHARPEN_RADIUS = 1.2
+SHARPEN_PERCENT = 140
+SHARPEN_THRESHOLD = 3
+
+# Keep output as PNG to preserve indexed palette output quality.
+OUTPUT_FORMAT = "PNG"
+
+# 6-color palette from the Colab workflow.
+PALETTE = [
+    (0, 0, 0),        # black
+    (255, 255, 255),  # white
+    (255, 0, 0),      # red
+    (255, 255, 0),    # yellow
+    (0, 0, 255),      # blue
+    (0, 255, 0),      # green
+]
+
+if hasattr(Image, "Dither"):
+    DITHER = Image.Dither.FLOYDSTEINBERG
+else:
+    DITHER = Image.FLOYDSTEINBERG
+
+
+def make_palette_image(palette_rgb):
+    pal = Image.new("P", (1, 1))
+    flat = []
+    for color in palette_rgb:
+        flat.extend(color)
+    flat.extend([0, 0, 0] * (256 - len(palette_rgb)))
+    pal.putpalette(flat)
+    return pal
 
 
 class ImageConverter:
@@ -24,58 +62,37 @@ class ImageConverter:
             img_path = os.path.join(self.source_dir, img)
 
             if os.path.isfile(img_path) and img.lower().endswith(valid_extensions):
-                print(f"Resizing image: {img_path}")
-                self.resize_image(img_path, img)
+                print(f"Preprocessing image: {img_path}")
+                self.preprocess_image(img_path, img)
             
 
-    # Resizes the image to fit the target dimensions while maintaining aspect ratio.
-    # Crops the image to the target dimensions and enhances color and contrast.
-    # Saves the processed image to the output directory.
-    def resize_image(self, img_path, file_name):
-        # Screen target size dims
-        target_width = 800
-        target_height = 480
+    # Uses the Colab-style pipeline:
+    # fixed resize, contrast/color boost, unsharp mask, then 6-color quantization.
+    def preprocess_image(self, img_path, file_name):
+        palette = make_palette_image(PALETTE)
+        base_name = os.path.splitext(file_name)[0]
+        out_name = f"{base_name}_waveshare6.png"
+        out_path = os.path.join(self.output_dir, out_name)
 
         with Image.open(img_path) as img:
             img = ImageOps.exif_transpose(img)
+            img = img.convert("RGB")
+            img = img.resize((TARGET_WIDTH, TARGET_HEIGHT), Image.Resampling.LANCZOS)
 
-            # Original dimensions
-            orig_width, orig_height = img.size
+            img = ImageEnhance.Contrast(img).enhance(CONTRAST)
+            img = ImageEnhance.Color(img).enhance(COLOR)
+            img = img.filter(
+                ImageFilter.UnsharpMask(
+                    radius=SHARPEN_RADIUS,
+                    percent=SHARPEN_PERCENT,
+                    threshold=SHARPEN_THRESHOLD,
+                )
+            )
 
-            original_aspect_ratio = orig_width / orig_height
-            target_aspect_ratio = target_width / target_height
+            out = img.quantize(palette=palette, dither=DITHER)
 
-            # Fit height and crop sides
-            if original_aspect_ratio > target_aspect_ratio:
-                new_height = target_height
-                new_width = int(new_height * original_aspect_ratio)
-            # Fit width and crop top/bottom
+            if OUTPUT_FORMAT.upper() == "PNG":
+                out.save(out_path, format="PNG")
             else:
-                new_width = target_width
-                new_height = int(new_width / original_aspect_ratio)
-
-            print("Resizing image...")
-            # Resize the image while maintaining aspect ratio
-            resized_img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
-
-            # Calculate the cropping box to center the crop
-            left = (new_width - target_width) // 2
-            top = (new_height - target_height) // 2
-            right = left + target_width
-            bottom = top + target_height
-
-            print("Cropping image...")
-            # Crop the image
-            cropped_img = resized_img.crop((left, top, right, bottom))
-
-            print("Enchancing image...")
-            color = ImageEnhance.Color(cropped_img)
-            cropped_img = color.enhance(1.5)
-
-            contrast = ImageEnhance.Contrast(cropped_img)
-            cropped_img = contrast.enhance(1.5)
-            
-            print("Saving image...")
-            # Save the final image
-            cropped_img.save(os.path.join(self.output_dir, file_name))
+                out.convert("RGB").save(out_path, format="BMP")
 
