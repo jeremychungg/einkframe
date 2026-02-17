@@ -7,10 +7,9 @@ TARGET_HEIGHT = 480
 
 CONTRAST = 1.7
 COLOR = 1.2
-SHARPEN_RADIUS = 1.2
+SHARPEN_RADIUS = 1.0
 SHARPEN_PERCENT = 140
 SHARPEN_THRESHOLD = 3
-DENOISE_SIZE = 3
 
 # Keep output as PNG to preserve indexed palette output quality.
 OUTPUT_FORMAT = "PNG"
@@ -25,11 +24,10 @@ PALETTE = [
     (255, 255, 0),    # yellow
 ]
 
-# Speckle control: NONE gives cleaner flat areas on e-ink than FLOYDSTEINBERG.
 if hasattr(Image, "Dither"):
-    DITHER = Image.Dither.NONE
+    DITHER = Image.Dither.FLOYDSTEINBERG
 else:
-    DITHER = Image.NONE
+    DITHER = Image.FLOYDSTEINBERG
 
 
 def make_palette_image(palette_rgb):
@@ -82,7 +80,6 @@ class ImageConverter:
 
             img = ImageEnhance.Contrast(img).enhance(CONTRAST)
             img = ImageEnhance.Color(img).enhance(COLOR)
-            img = img.filter(ImageFilter.MedianFilter(size=DENOISE_SIZE))
             img = img.filter(
                 ImageFilter.UnsharpMask(
                     radius=SHARPEN_RADIUS,
@@ -97,4 +94,3 @@ class ImageConverter:
                 out.save(out_path, format="PNG")
             else:
                 out.convert("RGB").save(out_path, format="BMP")
-
