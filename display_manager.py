@@ -2,8 +2,8 @@ import os
 import sys
 import time
 import random
+import importlib
 from PIL import Image
-from lib.waveshare_epd import epd7in3f
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 LIB_PATH = os.path.join(SCRIPT_DIR, 'lib')
@@ -23,7 +23,15 @@ class DisplayManager:
         self.image_folder = image_folder
         self.rotation = 0
         self.refresh_time = refresh_time
-        self.epd = epd7in3f.EPD()
+        driver_name = os.getenv("EINK_DRIVER", "epd7in3e").strip()
+        try:
+            epd_module = importlib.import_module(f"lib.waveshare_epd.{driver_name}")
+        except ModuleNotFoundError as exc:
+            raise RuntimeError(
+                f"Unsupported EINK_DRIVER '{driver_name}'. Try 'epd7in3e' or 'epd7in3f'."
+            ) from exc
+        print(f"Using ePaper driver: {driver_name}")
+        self.epd = epd_module.EPD()
         self.epd.init()
         self.stop_display = False
 

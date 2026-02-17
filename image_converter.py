@@ -14,14 +14,14 @@ SHARPEN_THRESHOLD = 3
 # Keep output as PNG to preserve indexed palette output quality.
 OUTPUT_FORMAT = "PNG"
 
-# 6-color palette from the Colab workflow.
+# 6-color palette for the Waveshare 7.3" E panel.
 PALETTE = [
     (0, 0, 0),        # black
     (255, 255, 255),  # white
+    (0, 255, 0),      # green
+    (0, 0, 255),      # blue
     (255, 0, 0),      # red
     (255, 255, 0),    # yellow
-    (0, 0, 255),      # blue
-    (0, 255, 0),      # green
 ]
 
 if hasattr(Image, "Dither"):
@@ -66,8 +66,7 @@ class ImageConverter:
                 self.preprocess_image(img_path, img)
             
 
-    # Uses the Colab-style pipeline:
-    # fixed resize, contrast/color boost, unsharp mask, then 6-color quantization.
+    # Uses fixed resize, contrast/color boost, unsharp mask, then panel palette quantization.
     def preprocess_image(self, img_path, file_name):
         palette = make_palette_image(PALETTE)
         base_name = os.path.splitext(file_name)[0]

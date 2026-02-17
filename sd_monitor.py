@@ -12,6 +12,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 IMAGE_PROCESSING_SCRIPT = os.path.join(SCRIPT_DIR, "frame_manager.py")
 process = None  # Holds the subprocess running frame_manager.py
 sd_was_removed = False  # Track if SD card was removed
+SUPPORTED_DRIVERS = {"epd7in3f", "epd7in3e"}
 
 
 def get_refresh_time(sd_path, filename="refresh_time.txt"):
@@ -34,6 +35,21 @@ def get_refresh_time(sd_path, filename="refresh_time.txt"):
         return 600
 
 
+def get_display_driver(sd_path, filename="display_driver.txt"):
+    """Read optional panel driver name from SD card directory."""
+    file_path = os.path.join(sd_path, filename)
+    if os.path.exists(file_path):
+        try:
+            with open(file_path, "r") as f:
+                driver = f.read().strip()
+                if driver in SUPPORTED_DRIVERS:
+                    return driver
+                print(f"Invalid {filename} value '{driver}', defaulting to epd7in3e")
+        except Exception as e:
+            print(f"Error reading {filename}: {e}")
+    return "epd7in3e"
+
+
 def start_frame_manager(sd_path):
     """Start the image processing script as a separate process."""
     global process
@@ -45,13 +61,18 @@ def start_frame_manager(sd_path):
     
     # Read number from file
     refresh_time_sec = get_refresh_time(sd_path)
+    driver_name = get_display_driver(sd_path)
+    env = os.environ.copy()
+    env["EINK_DRIVER"] = driver_name
     
-    print(f"Starting image processing script with path {sd_path}...")
+    print(f"Starting image processing script with path {sd_path} using {driver_name}...")
     process = subprocess.Popen(
         ["python3", IMAGE_PROCESSING_SCRIPT, sd_path, str(refresh_time_sec)], 
         stdout=sys.stdout, 
         stderr=sys.stderr,
-        text=True)
+        text=True,
+        env=env,
+    )
     print("Started...")
 
 
