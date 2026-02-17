@@ -5,7 +5,7 @@ from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 TARGET_WIDTH = 800
 TARGET_HEIGHT = 480
 
-CONTRAST = 1.7
+CONTRAST = 1.3
 COLOR = 1.2
 SHARPEN_RADIUS = 1.0
 SHARPEN_PERCENT = 140
