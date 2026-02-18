@@ -5,12 +5,12 @@ from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 TARGET_WIDTH = 800
 TARGET_HEIGHT = 480
 
-CONTRAST = 1.5
-COLOR = 1.2
+CONTRAST = 1.2
+COLOR = 1.35
 SHARPEN_RADIUS = 1.0
-SHARPEN_PERCENT = 140
+SHARPEN_PERCENT = 70
 SHARPEN_THRESHOLD = 3
-DITHER_STRENGTH = 1.0  # 0.0 = off, 1.0 = full Floyd-Steinberg, 0.0-1.0 = scaled diffusion
+DITHER_STRENGTH = 0.45  # 0.0 = off, 1.0 = full Floyd-Steinberg, 0.0-1.0 = scaled diffusion
 
 # Keep output as PNG to preserve indexed palette output quality.
 OUTPUT_FORMAT = "PNG"
