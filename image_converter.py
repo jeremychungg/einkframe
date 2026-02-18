@@ -5,11 +5,11 @@ from PIL import Image, ImageEnhance, ImageFilter, ImageOps
 TARGET_WIDTH = 800
 TARGET_HEIGHT = 480
 
-CONTRAST = 1.3
-COLOR = 1.2
-SHARPEN_RADIUS = 1.0
-SHARPEN_PERCENT = 140
-SHARPEN_THRESHOLD = 3
+CONTRAST = 1.15
+COLOR = 1.05
+SHARPEN_RADIUS = 0.8
+SHARPEN_PERCENT = 110
+SHARPEN_THRESHOLD = 4
 
 # Keep output as PNG to preserve indexed palette output quality.
 OUTPUT_FORMAT = "PNG"

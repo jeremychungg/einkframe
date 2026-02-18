@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>E-Ink Frame Simulator</title>
+  <style>
+    :root {
+      --bg: #111;
+      --panel: #1d1d1d;
+      --ink: #efefef;
+      --muted: #b8b8b8;
+      --accent: #f2c94c;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background:
+        radial-gradient(circle at 10% 10%, #262626 0%, transparent 45%),
+        radial-gradient(circle at 90% 80%, #202020 0%, transparent 35%),
+        var(--bg);
+      color: var(--ink);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .wrap {
+      max-width: 1300px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 16px;
+    }
+
+    .card {
+      background: linear-gradient(180deg, #242424, #1b1b1b);
+      border: 1px solid #2f2f2f;
+      border-radius: 14px;
+      padding: 14px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 1.25rem;
+      letter-spacing: 0.02em;
+    }
+
+    .sub {
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .control {
+      margin-bottom: 12px;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    label, .value {
+      font-size: 0.9rem;
+      color: var(--ink);
+    }
+
+    .value { color: var(--accent); min-width: 52px; text-align: right; }
+
+    input[type="range"] { width: 100%; }
+    input[type="file"], select, button {
+      width: 100%;
+      background: #101010;
+      border: 1px solid #3a3a3a;
+      color: var(--ink);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 0.9rem;
+    }
+
+    button {
+      cursor: pointer;
+      transition: border-color 0.15s ease;
+    }
+
+    button:hover { border-color: var(--accent); }
+
+    .preview {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+
+    .stage {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .canvas-wrap {
+      background: #0d0d0d;
+      border: 1px solid #2f2f2f;
+      border-radius: 10px;
+      padding: 10px;
+    }
+
+    .canvas-label {
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-bottom: 8px;
+    }
+
+    canvas {
+      width: 100%;
+      height: auto;
+      border: 1px solid #3a3a3a;
+      background: #fff;
+      image-rendering: pixelated;
+    }
+
+    .palette {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .swatch {
+      width: 28px;
+      height: 28px;
+      border: 1px solid #444;
+      border-radius: 6px;
+    }
+
+    .foot {
+      color: var(--muted);
+      font-size: 0.82rem;
+      margin-top: 10px;
+    }
+
+    @media (max-width: 980px) {
+      .wrap {
+        grid-template-columns: 1fr;
+      }
+      .stage {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="card">
+      <h1>Waveshare E-Ink Simulator</h1>
+      <p class="sub">Upload a photo and preview how it maps to the panel's 6-color palette.</p>
+
+      <div class="control">
+        <label for="fileInput">Image file</label>
+        <input id="fileInput" type="file" accept="image/*">
+      </div>
+
+      <div class="control">
+        <label for="fitMode">Resize mode</label>
+        <select id="fitMode">
+          <option value="stretch">Stretch (matches Python)</option>
+          <option value="contain">Contain</option>
+          <option value="cover">Cover</option>
+        </select>
+      </div>
+
+      <div class="control">
+        <div class="row">
+          <label for="contrast">Contrast</label>
+          <span class="value" id="contrastVal">1.30x</span>
+        </div>
+        <input id="contrast" type="range" min="0.5" max="2.0" step="0.01" value="1.3">
+      </div>
+
+      <div class="control">
+        <div class="row">
+          <label for="saturation">Color</label>
+          <span class="value" id="saturationVal">1.20x</span>
+        </div>
+        <input id="saturation" type="range" min="0.0" max="2.0" step="0.01" value="1.2">
+      </div>
+
+      <div class="control">
+        <div class="row">
+          <label for="sharpen">Sharpen</label>
+          <span class="value" id="sharpenVal">1.00x</span>
+        </div>
+        <input id="sharpen" type="range" min="0.0" max="2.0" step="0.05" value="1.0">
+      </div>
+
+      <div class="control">
+        <div class="row">
+          <label for="ditherStrength">Dithering</label>
+          <span class="value" id="ditherStrengthVal">100%</span>
+        </div>
+        <input id="ditherStrength" type="range" min="0" max="100" step="1" value="100">
+      </div>
+
+      <div class="control">
+        <button id="downloadBtn" type="button">Download Simulated PNG</button>
+      </div>
+
+      <div class="palette" id="palette"></div>
+      <p class="foot">Target panel resolution: 800x480</p>
+    </section>
+
+    <section class="preview">
+      <div class="card stage">
+        <div class="canvas-wrap">
+          <div class="canvas-label">Resized + adjusted image</div>
+          <canvas id="sourceCanvas" width="800" height="480"></canvas>
+        </div>
+        <div class="canvas-wrap">
+          <div class="canvas-label">Simulated e-ink output</div>
+          <canvas id="outputCanvas" width="800" height="480"></canvas>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const TARGET_W = 800;
+    const TARGET_H = 480;
+    const PALETTE = [
+      [0, 0, 0],
+      [255, 255, 255],
+      [0, 255, 0],
+      [0, 0, 255],
+      [255, 0, 0],
+      [255, 255, 0]
+    ];
+
+    const fileInput = document.getElementById("fileInput");
+    const fitMode = document.getElementById("fitMode");
+    const contrastInput = document.getElementById("contrast");
+    const saturationInput = document.getElementById("saturation");
+    const sharpenInput = document.getElementById("sharpen");
+    const ditherStrengthInput = document.getElementById("ditherStrength");
+    const downloadBtn = document.getElementById("downloadBtn");
+
+    const contrastVal = document.getElementById("contrastVal");
+    const saturationVal = document.getElementById("saturationVal");
+    const sharpenVal = document.getElementById("sharpenVal");
+    const ditherStrengthVal = document.getElementById("ditherStrengthVal");
+
+    const sourceCanvas = document.getElementById("sourceCanvas");
+    const outputCanvas = document.getElementById("outputCanvas");
+    const sctx = sourceCanvas.getContext("2d", { willReadFrequently: true });
+    const octx = outputCanvas.getContext("2d", { willReadFrequently: true });
+
+    const paletteDiv = document.getElementById("palette");
+    PALETTE.forEach(([r, g, b]) => {
+      const sw = document.createElement("div");
+      sw.className = "swatch";
+      sw.style.backgroundColor = `rgb(${r},${g},${b})`;
+      sw.title = `rgb(${r}, ${g}, ${b})`;
+      paletteDiv.appendChild(sw);
+    });
+
+    let loadedImage = null;
+
+    function clamp(v) {
+      return Math.max(0, Math.min(255, v));
+    }
+
+    function updateValueLabels() {
+      contrastVal.textContent = `${Number(contrastInput.value).toFixed(2)}x`;
+      saturationVal.textContent = `${Number(saturationInput.value).toFixed(2)}x`;
+      sharpenVal.textContent = `${Number(sharpenInput.value).toFixed(2)}x`;
+      ditherStrengthVal.textContent = `${Number(ditherStrengthInput.value).toFixed(0)}%`;
+    }
+
+    function drawInputToCanvas(img) {
+      sctx.clearRect(0, 0, TARGET_W, TARGET_H);
+      if (!img) {
+        sctx.fillStyle = "#ffffff";
+        sctx.fillRect(0, 0, TARGET_W, TARGET_H);
+        return;
+      }
+
+      const mode = fitMode.value;
+      const iw = img.naturalWidth || img.width;
+      const ih = img.naturalHeight || img.height;
+
+      if (mode === "stretch") {
+        sctx.drawImage(img, 0, 0, TARGET_W, TARGET_H);
+        return;
+      }
+
+      const imageAspect = iw / ih;
+      const targetAspect = TARGET_W / TARGET_H;
+      let drawW, drawH, dx, dy;
+
+      if (mode === "contain") {
+        if (imageAspect > targetAspect) {
+          drawW = TARGET_W;
+          drawH = TARGET_W / imageAspect;
+        } else {
+          drawH = TARGET_H;
+          drawW = TARGET_H * imageAspect;
+        }
+        dx = (TARGET_W - drawW) / 2;
+        dy = (TARGET_H - drawH) / 2;
+        sctx.fillStyle = "#ffffff";
+        sctx.fillRect(0, 0, TARGET_W, TARGET_H);
+        sctx.drawImage(img, dx, dy, drawW, drawH);
+      } else {
+        if (imageAspect > targetAspect) {
+          drawH = TARGET_H;
+          drawW = TARGET_H * imageAspect;
+        } else {
+          drawW = TARGET_W;
+          drawH = TARGET_W / imageAspect;
+        }
+        dx = (TARGET_W - drawW) / 2;
+        dy = (TARGET_H - drawH) / 2;
+        sctx.drawImage(img, dx, dy, drawW, drawH);
+      }
+    }
+
+    function applyContrastAndSaturation(data, contrast, saturation) {
+      for (let i = 0; i < data.length; i += 4) {
+        let r = data[i];
+        let g = data[i + 1];
+        let b = data[i + 2];
+
+        r = ((r / 255 - 0.5) * contrast + 0.5) * 255;
+        g = ((g / 255 - 0.5) * contrast + 0.5) * 255;
+        b = ((b / 255 - 0.5) * contrast + 0.5) * 255;
+
+        const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        r = luma + (r - luma) * saturation;
+        g = luma + (g - luma) * saturation;
+        b = luma + (b - luma) * saturation;
+
+        data[i] = clamp(r);
+        data[i + 1] = clamp(g);
+        data[i + 2] = clamp(b);
+      }
+    }
+
+    function blur3x3(src, width, height) {
+      const out = new Float32Array(src.length);
+      const k = [
+        1, 2, 1,
+        2, 4, 2,
+        1, 2, 1
+      ];
+
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          let rr = 0, gg = 0, bb = 0, wsum = 0;
+          for (let ky = -1; ky <= 1; ky++) {
+            const py = Math.max(0, Math.min(height - 1, y + ky));
+            for (let kx = -1; kx <= 1; kx++) {
+              const px = Math.max(0, Math.min(width - 1, x + kx));
+              const kw = k[(ky + 1) * 3 + (kx + 1)];
+              const idx = (py * width + px) * 4;
+              rr += src[idx] * kw;
+              gg += src[idx + 1] * kw;
+              bb += src[idx + 2] * kw;
+              wsum += kw;
+            }
+          }
+          const i = (y * width + x) * 4;
+          out[i] = rr / wsum;
+          out[i + 1] = gg / wsum;
+          out[i + 2] = bb / wsum;
+          out[i + 3] = src[i + 3];
+        }
+      }
+      return out;
+    }
+
+    function applySharpen(data, width, height, amount) {
+      if (amount <= 0) return;
+      const blurred = blur3x3(data, width, height);
+
+      for (let i = 0; i < data.length; i += 4) {
+        data[i] = clamp(data[i] + (data[i] - blurred[i]) * amount);
+        data[i + 1] = clamp(data[i + 1] + (data[i + 1] - blurred[i + 1]) * amount);
+        data[i + 2] = clamp(data[i + 2] + (data[i + 2] - blurred[i + 2]) * amount);
+      }
+    }
+
+    function nearestPaletteIndex(r, g, b) {
+      let best = 0;
+      let bestDist = Infinity;
+      for (let i = 0; i < PALETTE.length; i++) {
+        const p = PALETTE[i];
+        const dr = r - p[0];
+        const dg = g - p[1];
+        const db = b - p[2];
+        const d = dr * dr + dg * dg + db * db;
+        if (d < bestDist) {
+          bestDist = d;
+          best = i;
+        }
+      }
+      return best;
+    }
+
+    function quantizeToPalette(data, width, height, ditherStrength) {
+      const buf = new Float32Array(data.length);
+      for (let i = 0; i < data.length; i++) buf[i] = data[i];
+
+      const out = new Uint8ClampedArray(data.length);
+
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const idx = (y * width + x) * 4;
+          const oldR = buf[idx];
+          const oldG = buf[idx + 1];
+          const oldB = buf[idx + 2];
+
+          const pi = nearestPaletteIndex(oldR, oldG, oldB);
+          const [newR, newG, newB] = PALETTE[pi];
+          out[idx] = newR;
+          out[idx + 1] = newG;
+          out[idx + 2] = newB;
+          out[idx + 3] = 255;
+
+          if (ditherStrength <= 0) continue;
+
+          const er = (oldR - newR) * ditherStrength;
+          const eg = (oldG - newG) * ditherStrength;
+          const eb = (oldB - newB) * ditherStrength;
+
+          spreadError(buf, width, height, x + 1, y, er, eg, eb, 7 / 16);
+          spreadError(buf, width, height, x - 1, y + 1, er, eg, eb, 3 / 16);
+          spreadError(buf, width, height, x, y + 1, er, eg, eb, 5 / 16);
+          spreadError(buf, width, height, x + 1, y + 1, er, eg, eb, 1 / 16);
+        }
+      }
+
+      return out;
+    }
+
+    function spreadError(buf, width, height, x, y, er, eg, eb, factor) {
+      if (x < 0 || y < 0 || x >= width || y >= height) return;
+      const idx = (y * width + x) * 4;
+      buf[idx] = clamp(buf[idx] + er * factor);
+      buf[idx + 1] = clamp(buf[idx + 1] + eg * factor);
+      buf[idx + 2] = clamp(buf[idx + 2] + eb * factor);
+    }
+
+    function render() {
+      drawInputToCanvas(loadedImage);
+
+      const contrast = Number(contrastInput.value);
+      const saturation = Number(saturationInput.value);
+      const sharpen = Number(sharpenInput.value);
+      const ditherStrength = Number(ditherStrengthInput.value) / 100;
+
+      const srcImage = sctx.getImageData(0, 0, TARGET_W, TARGET_H);
+      const work = new Uint8ClampedArray(srcImage.data);
+
+      applyContrastAndSaturation(work, contrast, saturation);
+      applySharpen(work, TARGET_W, TARGET_H, sharpen);
+
+      const adjusted = new ImageData(work, TARGET_W, TARGET_H);
+      sctx.putImageData(adjusted, 0, 0);
+
+      const quantized = quantizeToPalette(work, TARGET_W, TARGET_H, ditherStrength);
+      const outImage = new ImageData(quantized, TARGET_W, TARGET_H);
+      octx.putImageData(outImage, 0, 0);
+    }
+
+    function loadFromFile(file) {
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        loadedImage = img;
+        render();
+        URL.revokeObjectURL(url);
+      };
+      img.src = url;
+    }
+
+    fileInput.addEventListener("change", (e) => loadFromFile(e.target.files[0]));
+    [fitMode, contrastInput, saturationInput, sharpenInput, ditherStrengthInput].forEach((el) => {
+      el.addEventListener("input", () => {
+        updateValueLabels();
+        if (loadedImage) render();
+      });
+      el.addEventListener("change", () => {
+        updateValueLabels();
+        if (loadedImage) render();
+      });
+    });
+
+    downloadBtn.addEventListener("click", () => {
+      const a = document.createElement("a");
+      a.download = "simulated_waveshare6.png";
+      a.href = outputCanvas.toDataURL("image/png");
+      a.click();
+    });
+
+    updateValueLabels();
+    render();
+  </script>
+</body>
+</html>
